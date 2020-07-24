@@ -17,10 +17,18 @@ class CPU:
             "instruction": "MUL", "handle": self.handle_ALU}
         self.branch_table[0b10100000] = {
             "instruction": "ADD", "handle": self.handle_ALU}
+        self.branch_table[0b10100111] = {
+            "instruction": "CMP", "handle": self.handle_ALU}
         self.branch_table[0b01000101] = {
             "instruction": "PUSH", "handle": self.handle_PUSH}
         self.branch_table[0b01000110] = {
             "instruction": "POP", "handle": self.handle_POP}
+        self.branch_table[0b01010100] = {
+            "instruction": "JMP", "handle": self.handle_JMP}
+        self.branch_table[0b01010101] = {
+            "instruction": "JEQ", "handle": self.handle_JEQ}
+        self.branch_table[0b01010110] = {
+            "instruction": "JNE", "handle": self.handle_JNE}
         self.branch_table[0b01010000] = {
             "instruction": "CALL", "handle": self.handle_CALL}
         self.branch_table[0b00010001] = {
@@ -32,6 +40,9 @@ class CPU:
         self.pc = 0
         self.sp = 7
         self.reg[self.sp] = 0xf4
+        self.E = 0
+        self.L = 0
+        self.G = 0
 
     def load(self):
         """Load a program into memory."""
@@ -109,6 +120,19 @@ class CPU:
         elif op == "MUL":
             multiplication = self.reg_read(reg_a) * self.reg_read(reg_b)
             self.reg_write(reg_a, multiplication)
+        elif op == "CMP":
+            if self.reg_read(reg_a) == self.reg_read(reg_b):
+                self.E = 1
+                self.L = 0
+                self.G = 0
+            elif self.reg_read(reg_a) < self.reg_read(reg_b):
+                self.E = 0
+                self.L = 1
+                self.G = 0
+            elif self.reg_read(reg_a) > self.reg_read(reg_b):
+                self.E = 0
+                self.L = 0
+                self.G = 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -132,6 +156,24 @@ class CPU:
         self.reg[self.sp] += 1
 
         self.pc += 2
+
+    def handle_JMP(self, op):
+        reg_address = self.ram_read(self.pc + 1)
+        self.pc = self.reg_read(reg_address)
+
+    def handle_JEQ(self, op):
+        if self.E == 1:
+            reg_address = self.ram_read(self.pc + 1)
+            self.pc = self.reg_read(reg_address)
+        else:
+            self.pc += 2
+
+    def handle_JNE(self, op):
+        if self.E == 0:
+            reg_address = self.ram_read(self.pc + 1)
+            self.pc = self.reg_read(reg_address)
+        else:
+            self.pc += 2
 
     def handle_CALL(self, op):
         return_address = self.pc + 2
